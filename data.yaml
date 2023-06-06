@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 6
+names: ['0', 'Magpie', 'Wild Boar', 'bird', 'pheasant', 'waterdeer']
+
+roboflow:
+  workspace: farm-protector-tmzv7
+  project: protector
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/farm-protector-tmzv7/protector/dataset/3
