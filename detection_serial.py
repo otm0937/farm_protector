@@ -1,6 +1,30 @@
 from ultralytics import YOLO
 import cv2
 import torch
+import serial
+import json
+
+
+def result_to_json(is_person, is_detected, data):
+    result = {
+        "is_person": is_person,
+        "is_detected": is_detected,
+        "data": []
+    }
+
+    for row in data:
+        item = {
+            "x1": row[0].item(),
+            "y1": row[1].item(),
+            "x2": row[2].item(),
+            "y2": row[3].item(),
+            "conf": row[4].item(),
+            "cls": row[5].item()
+        }
+        result["data"].append(item)
+
+    return json.dumps(result)
+
 
 d_model = YOLO('runs/detect/train/weights/best.pt')
 y_model = YOLO('yolov8n.pt')
@@ -24,10 +48,13 @@ while True:
         d_result = d_model([frame])[0]
         d_res_plot = d_result.plot()
         d_data = d_result.boxes.data  # tensor([[x,y,x,y,conf,cls]]) torch.float32
+        is_detected = d_data.numel() != 0
 
-        filtered_data = d_data[d_data[:, -1] == 0]
+        # filtered_data = d_data[d_data[:, -1] == 0]
 
         cv2.imshow("res", y_res_plot)
+
+        print(result_to_json(is_person, is_detected, d_data))
 
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
