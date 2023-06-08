@@ -29,6 +29,9 @@ def result_to_json(is_person, is_detected, data):
 d_model = YOLO('runs/detect/train/weights/best.pt')
 y_model = YOLO('yolov8n.pt')
 
+# ser = serial.Serial('COM4')
+# print(ser.name)
+
 cap = cv2.VideoCapture(1)
 
 if cap.isOpened():
@@ -52,9 +55,14 @@ while True:
 
         # filtered_data = d_data[d_data[:, -1] == 0]
 
-        cv2.imshow("res", y_res_plot)
+        cv2.putText(d_res_plot, str(is_person), (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
 
-        print(result_to_json(is_person, is_detected, d_data))
+        cv2.imshow("res", d_res_plot)
+
+        json_result = result_to_json(is_person, is_detected, d_data)
+
+        print(json_result.encode())
+        # ser.write()
 
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
@@ -64,4 +72,5 @@ while True:
         break
 
 cap.release()
+# ser.close()
 cv2.destroyAllWindows()
