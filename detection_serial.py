@@ -32,13 +32,12 @@ y_model = YOLO('yolov8n.pt')
 # ser = serial.Serial('COM4')
 # print(ser.name)
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 if cap.isOpened():
     print('width: {}, height : {}'.format(cap.get(3), cap.get(4)))
 
 while True:
-    ret, frame = cap.read()
 
     if ret:
         frame = cv2.flip(frame, 1)
@@ -47,17 +46,20 @@ while True:
         y_res_plot = y_result.plot()
         y_data = y_result.boxes.data
         is_person = torch.any(y_data[:, -1] == 0).item()
+        ret, frame = cap.read()
 
         d_result = d_model([frame])[0]
         d_res_plot = d_result.plot()
         d_data = d_result.boxes.data  # tensor([[x,y,x,y,conf,cls]]) torch.float32
         is_detected = d_data.numel() != 0
 
+        res_plot = cv2.hconcat([y_res_plot, d_res_plot])
+
         # filtered_data = d_data[d_data[:, -1] == 0]
 
-        cv2.putText(d_res_plot, str(is_person), (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, str(is_person), (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
 
-        cv2.imshow("res", d_res_plot)
+        cv2.imshow("res", res_plot)
 
         json_result = result_to_json(is_person, is_detected, d_data)
 
