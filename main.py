@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import cv2
 import torch
 import serial
+import time
 
 
 def transform_data(data):
@@ -18,19 +19,23 @@ def get_min_x_data(data):
     return min_x_data
 
 
-d_model = YOLO('runs/detect/train/weights/best.pt')
+#d_model = YOLO('runs/detect/train/weights/best.pt')
+d_model = YOLO('model/best.pt')
 y_model = YOLO('yolov8n.pt')
 
-ser = serial.Serial('COM3')
+ser = serial.Serial('COM10', 115200)
 print(ser.name)
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
 if cap.isOpened():
     print('width: {}, height : {}'.format(cap.get(3), cap.get(4)))
 
-ser = serial.Serial('COM7',115200)
-print(ser.name)
+prev_time = time.time()  # init time
+cnt = 0
+avg = 1.0
+max_fps = 0
+min_fps = 100000
 
 while True:
     ret, frame = cap.read()
@@ -43,17 +48,35 @@ while True:
         y_data = y_result.boxes.data
         is_person = torch.any(y_data[:, -1] == 0).item()
 
-        result = '1' if is_person else '0'
+        result = '@1' if is_person else '@0'
 
         d_result = d_model.predict(
             source=[frame],
-            conf=0.65
+            conf=0.5
         )[0]
         d_res_plot = d_result.plot()
         d_data = d_result.boxes.data  # tensor([[x1,y1,x2,y2,conf,cls]]) torch.float32
 
+        now_time = time.time()
+        dly = now_time - prev_time
+        fps = (1 / dly)
+        avg = (avg * cnt + fps) / (cnt + 1)
+        cnt += 1
+        prev_time = now_time
+
+        if fps > max_fps:
+            max_fps = fps
+        if fps < min_fps:
+            min_fps = fps
+
         res_plot = cv2.hconcat([y_res_plot, d_res_plot])
-        cv2.putText(res_plot, str(is_person), (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "cnt: %d" % cnt, (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "dly: %.4f" % dly, (5, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "fps: %.2f" % fps, (5, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "avg: %.2f" % avg, (5, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "max: %.2f" % max_fps, (5, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, "min: %.2f" % min_fps, (5, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
+        cv2.putText(res_plot, str(is_person), (5, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 0), 1)
         cv2.imshow("result", res_plot)
 
         if d_data.numel() == 0:
@@ -74,7 +97,7 @@ while True:
         except:
             print('error')
             ser.close()
-            ser = serial.Serial('COM7')
+            ser = serial.Serial('COM10')
             print(ser.name)
 
         k = cv2.waitKey(1) & 0xFF
