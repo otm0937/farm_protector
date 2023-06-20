@@ -18,9 +18,11 @@ def get_min_x_data(data):
     return min_x_data
 
 
-
 d_model = YOLO('runs/detect/train/weights/best.pt')
 y_model = YOLO('yolov8n.pt')
+
+ser = serial.Serial('COM3')
+print(ser.name)
 
 cap = cv2.VideoCapture(1)
 
