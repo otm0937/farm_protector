@@ -18,22 +18,23 @@ def get_min_x_data(data):
     return min_x_data
 
 
+
 d_model = YOLO('runs/detect/train/weights/best.pt')
 y_model = YOLO('yolov8n.pt')
-
-# ser = serial.Serial('COM4')
-# print(ser.name)
 
 cap = cv2.VideoCapture(1)
 
 if cap.isOpened():
     print('width: {}, height : {}'.format(cap.get(3), cap.get(4)))
 
+ser = serial.Serial('COM7',115200)
+print(ser.name)
+
 while True:
     ret, frame = cap.read()
 
     if ret:
-        frame = cv2.flip(frame, 1)
+        frame = cv2.flip(frame, 0)
 
         y_result = y_model([frame])[0]
         y_res_plot = y_result.plot()
@@ -44,7 +45,7 @@ while True:
 
         d_result = d_model.predict(
             source=[frame],
-            conf=0.75
+            conf=0.65
         )[0]
         d_res_plot = d_result.plot()
         d_data = d_result.boxes.data  # tensor([[x1,y1,x2,y2,conf,cls]]) torch.float32
@@ -54,19 +55,25 @@ while True:
         cv2.imshow("result", res_plot)
 
         if d_data.numel() == 0:
-            result = result + ' ' + '0'
+            result = result + ',' + '0,0,0,0'
         else:
-            result = result + ' ' + '1'
+            result = result + ',' + '1'
 
             data = transform_data(d_data)  # tensor([[x,y,cls]])
 
             datum = get_min_x_data(data)
 
-            result = result + ' ' + f"{datum[0]} {datum[1]} {datum[2]}"
+            result = result + ',' + f"{datum[0]},{datum[1]},{datum[2]}\n"
 
         print(result)
 
-        # ser.write()
+        try:
+            ser.write(result.encode())
+        except:
+            print('error')
+            ser.close()
+            ser = serial.Serial('COM7')
+            print(ser.name)
 
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
@@ -76,5 +83,5 @@ while True:
         break
 
 cap.release()
-# ser.close()
+ser.close()
 cv2.destroyAllWindows()
